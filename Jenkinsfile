@@ -79,19 +79,21 @@ pipeline {
                 withCredentials([
                     string(credentialsId: 'NVD-key', variable: 'NVD_API_KEY')
                 ]) {
-                    sh '''
-                        set -e
-                        mkdir -p reports/dependency-check
+                sh '''
+                    set -e
 
-                        /opt/dependency-check/bin/dependency-check.sh \
-                          --project "Swiggy Application" \
-                          --scan package.json \
-                          --scan package-lock.json \
-                          --format XML \
-                          --out reports/dependency-check \
-                          --data /var/lib/jenkins/dependency-check-data \
-                          --nvdApiKey "$NVD_API_KEY"
-                    '''
+                      mkdir -p reports/dependency-check
+
+                    /opt/dependency-check/bin/dependency-check.sh \
+      --project "Swiggy Application" \
+      --scan package.json \
+      --scan package-lock.json \
+      --format XML \
+      --out reports/dependency-check \
+      --data /var/lib/jenkins/dependency-check-data \
+      --nvdApiKey "$NVD_API_KEY" \
+      --disableOssIndex
+'''
                 }
             }
             post {
