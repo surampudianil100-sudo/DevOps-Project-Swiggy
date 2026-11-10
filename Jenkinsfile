@@ -1,6 +1,3 @@
-cd /root/devsecops-project/application
-
-cat > Jenkinsfile <<'EOF'
 pipeline {
     agent any
 
