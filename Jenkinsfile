@@ -1,5 +1,11 @@
+
 pipeline {
     agent any
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+    }
 
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
@@ -21,6 +27,7 @@ pipeline {
         stage('Checkout Source Code') {
             steps {
                 checkout scm
+
                 script {
                     env.GIT_SHORT = sh(
                         script: 'git rev-parse --short HEAD',
@@ -69,7 +76,7 @@ pipeline {
         stage('SonarQube Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                    waitForQualityGate(abortPipeline: true)
                 }
             }
         }
@@ -77,25 +84,29 @@ pipeline {
         stage('OWASP Dependency Check') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'NVD-key', variable: 'NVD_API_KEY')
+                    string(
+                        credentialsId: 'NVD-key',
+                        variable: 'NVD_API_KEY'
+                    )
                 ]) {
-                sh '''
-                    set -e
+                    sh '''
+                        set -e
 
-                      mkdir -p reports/dependency-check
+                        mkdir -p reports/dependency-check
 
-                    /opt/dependency-check/bin/dependency-check.sh \
-      --project "Swiggy Application" \
-      --scan package.json \
-      --scan package-lock.json \
-      --format XML \
-      --out reports/dependency-check \
-      --data /var/lib/jenkins/dependency-check-data \
-      --nvdApiKey "$NVD_API_KEY" \
-      --disableOssIndex
-'''
+                        /opt/dependency-check/bin/dependency-check.sh \
+                          --project "Swiggy Application" \
+                          --scan package.json \
+                          --scan package-lock.json \
+                          --format XML \
+                          --out reports/dependency-check \
+                          --data /var/lib/jenkins/dependency-check-data \
+                          --nvdApiKey "$NVD_API_KEY" \
+                          --disableOssIndex
+                    '''
                 }
             }
+
             post {
                 always {
                     dependencyCheckPublisher(
@@ -109,10 +120,12 @@ pipeline {
             steps {
                 sh '''
                     set -e
+
                     trivy fs \
                       --scanners vuln,secret \
                       --severity HIGH,CRITICAL \
                       --exit-code 1 \
+                      --skip-dirs .git \
                       --skip-dirs node_modules \
                       --skip-dirs dist \
                       .
@@ -133,6 +146,7 @@ pipeline {
             steps {
                 sh '''
                     set -e
+
                     trivy image \
                       --severity HIGH,CRITICAL \
                       --exit-code 1 \
@@ -170,6 +184,9 @@ pipeline {
 
                     kubectl get nodes
 
+                    test -f kubernetes/deployment.yml
+                    test -f kubernetes/service.yml
+
                     sed "s|IMAGE_PLACEHOLDER|$IMAGE_NAME|g" \
                       kubernetes/deployment.yml \
                       > deployment-rendered.yml
@@ -205,4 +222,4 @@ pipeline {
         }
     }
 }
-EOF
+
